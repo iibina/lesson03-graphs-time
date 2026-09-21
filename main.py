@@ -1,58 +1,60 @@
 # ----------------------------------
-# 그래프 영역 2
+# 그래프 영역 5
 # ----------------------------------
 st.divider()
-st.header("📊 그래프 2. 일관객 합계 TOP5 영화의 날짜별 일관객 변화")
+st.header("🔥 그래프 5. 월 × 요일별 일관객 합계 히트맵")
 
-# 기간 동안 일관객 합계가 가장 큰 영화 5편 선택
-top5_movies = (
-    df.groupby("영화명", as_index=False)["일관객"]
+# 월과 요일 추출
+heatmap_df = df.copy()
+heatmap_df["월"] = heatmap_df["날짜"].dt.month
+
+weekday_order = ["월", "화", "수", "목", "금", "토", "일"]
+weekday_map = {
+    0: "월",
+    1: "화",
+    2: "수",
+    3: "목",
+    4: "금",
+    5: "토",
+    6: "일"
+}
+
+heatmap_df["요일"] = heatmap_df["날짜"].dt.dayofweek.map(weekday_map)
+
+# 월 × 요일별 일관객 합계
+pivot = (
+    heatmap_df.groupby(["요일", "월"])["일관객"]
     .sum()
-    .sort_values("일관객", ascending=False)
-    .head(5)
+    .reset_index()
+    .pivot(index="요일", columns="월", values="일관객")
+    .reindex(weekday_order)   # 월요일 → 일요일 순서
+    .fillna(0)
 )
 
-top5_names = top5_movies["영화명"].tolist()
-
-# TOP5 영화 데이터만 추출
-top5_df = (
-    df[df["영화명"].isin(top5_names)]
-    .sort_values("날짜")
-)
-
-# 선 그래프
-fig2 = px.line(
-    top5_df,
-    x="날짜",
-    y="일관객",
-    color="영화명",
-    markers=True,
-    title="기간 내 일관객 합계 TOP5 영화의 날짜별 일관객 변화",
+# 히트맵
+fig5 = px.imshow(
+    pivot,
+    text_auto=True,
+    aspect="auto",
+    color_continuous_scale="YlOrRd",
     labels={
-        "날짜": "날짜",
-        "일관객": "일관객 수",
-        "영화명": "영화"
+        "x": "월",
+        "y": "요일",
+        "color": "일관객 합계"
     },
-    hover_data={
-        "날짜": "|%Y-%m-%d",
-        "일관객": ":,"
-    }
+    title="월 × 요일별 일관객 합계"
 )
 
-# 호버 정보
-fig2.update_traces(
-    hovertemplate="<b>%{x|%Y-%m-%d}</b><br>%{fullData.name}<br>일관객: %{y:,}명<extra></extra>"
+fig5.update_traces(
+    hovertemplate="월: %{x}월<br>요일: %{y}<br>일관객 합계: %{z:,}명<extra></extra>"
 )
 
-# 범례 클릭으로 켜기/끄기 가능 (Plotly 기본 기능)
-fig2.update_layout(
-    hovermode="x unified",
-    xaxis_title="날짜",
-    yaxis_title="일관객 수",
-    height=550,
-    legend_title_text="영화"
+fig5.update_layout(
+    xaxis_title="월",
+    yaxis_title="요일",
+    height=500
 )
 
-st.plotly_chart(fig2, use_container_width=True)
+st.plotly_chart(fig5, use_container_width=True)
 
 st.info("📝 **이 그래프로 알 수 있는 것:** (여기에 설명 문장을 작성)")
